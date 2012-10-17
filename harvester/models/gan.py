@@ -1,8 +1,7 @@
 from sqlalchemy import Column, Integer, String, Numeric, Boolean, DateTime, ForeignKey, create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
-Base = declarative_base()
+from meta import Base
 
 class GoogleCategory(Base):
     __tablename__ = 'categories'
@@ -59,7 +58,14 @@ class GoogleDeal(Base):
     link_type_id = Column(Integer, ForeignKey('google_deal_types.id'))
     link_type = relationship(GoogleDealType, primaryjoin=link_type_id==GoogleDealType.id)
 
+class GoogleCredential(Base):
+    __tablename__ = 'google_credentials'
 
-if __name__ == '__main__':
-    e = create_engine('sqlite://', echo=True)
-    Base.metadata.create_all(e)
+    id = Column(Integer, primary_key=True)
+    access_token = Column(String(255))
+    client_id = Column(String(255))
+    client_secret = Column(String(255))
+    refresh_token = Column(String(255))
+    token_expiry = Column(DateTime)
+    token_uri = Column(String(255))
+
