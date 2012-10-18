@@ -25,7 +25,6 @@ def get_deals_and_merchants(token, results_per_page =100, **kwargs):
     page_number = 1
     last_page = False
 
-
     while not last_page:
 
         url = "{}?{}".format(API_URL, urllib.urlencode({'token': token,
@@ -71,21 +70,29 @@ def parse_response(response):
     advertiser_name= link.find('advertisername').text
     network = link.find('network')
 
-    response_elements = {'total_matches': int(total_matches),
-                         'total_pages': int(total_pages.text) if total_pages is not None else None,
-                         'page_number_requested': int(page_number_requested.text) if page_number_requested  is not None else None,
-                         'merchant': {'external_id': int(advertiser_id), 'name': advertiser_name},
-                         'network': {'id': int(network.attrib.get('id')), 'name': network.text}
-                        }
+    response_elements = {
+        'total_matches': int(total_matches),
+        'total_pages': int(total_pages.text) if total_pages is not None else None,
+        'page_number_requested': int(page_number_requested.text) if page_number_requested  is not None else None,
+        'merchant': {
+            'external_id': int(advertiser_id),
+            'name': advertiser_name
+        },
+        'network': {
+            'id': int(network.attrib.get('id')),
+            'name': network.text
+        }
+    }
 
-    deal = {'description': offer_description,
-            'start_date': datetime.datetime.strptime(offer_start_date, "%Y-%m-%d"),
-            'end_date': datetime.datetime.strptime(offer_end_date, "%Y-%m-%d"),
-            'coupon_code': coupon_code.text if coupon_code is not None else None,
-            'coupon_restriction': coupon_restriction.text if coupon_restriction is not None else None,
-            'click_tracking_url': click_url,
-            'impression_pixel': impression_pixel.text if impression_pixel is not None else None,
-           }
+    deal = {
+        'description': offer_description,
+        'start_date': datetime.datetime.strptime(offer_start_date, "%Y-%m-%d"),
+        'end_date': datetime.datetime.strptime(offer_end_date, "%Y-%m-%d"),
+        'coupon_code': coupon_code.text if coupon_code is not None else None,
+        'coupon_restriction': coupon_restriction.text if coupon_restriction is not None else None,
+        'click_tracking_url': click_url,
+        'impression_pixel': impression_pixel.text if impression_pixel is not None else None,
+    }
 
     response_elements['deal'] = deal
 
@@ -95,15 +102,17 @@ def parse_response(response):
 
     response_elements['promotion_types'] = []
     for promotion_type in promotion_types.findall('promotiontype'):
-        response_elements['promotion_types'].append({'id': int(promotion_type.attrib.get('id')), 'name':promotion_type.text})
+        response_elements['promotion_types'].append({'id': int(promotion_type.attrib.get('id')),
+                                                     'name':promotion_type.text})
 
     return response_elements
+
 
 def save(response_elements):
     session = DBSession()
 
     network = LinkShareNetwork(**response_elements['network'])
-    if session.query(LinkShareNetwork).filter_by(id=response_elements['network']['id']) == []:
+    if not session.query(LinkShareNetwork).filter_by(id=response_elements['network']['id']):
         session.add(network)
 
     merchant = LinkShareMerchant(network_id=network.id, **response_elements['merchant'])
@@ -115,6 +124,7 @@ def save(response_elements):
 
     session.add(deal)
     session.commit()
+
 
 def handle_error(code, message):
     errors = {'10': InternalError, '20': AccessDenied, '30': QuotaExceeded, '40': InvalidRequest}
