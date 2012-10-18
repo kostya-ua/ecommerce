@@ -68,6 +68,9 @@ class GANTest(BaseTestCase):
         self.assertEqual(credentials.access_token, 'aaaaa')
 
 
+class CJTest(BaseTestCase):
+    pass
+
 
 if __name__ == '__main__':
     unittest.main()
