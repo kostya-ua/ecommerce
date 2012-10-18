@@ -1,11 +1,12 @@
+from __future__ import absolute_import
+
 import httplib2
 
-from apiclient.discovery import build
 from oauth2client.client import OAuth2WebServerFlow, OAuth2Credentials, AccessTokenRefreshError, Storage
 from oauth2client.tools import run
 
-from models.gan import GoogleCredential
-from models.meta import DBSession
+from ..models.gan import GoogleCredential
+from ..models.meta import DBSession
 
 class DBCredentialStorage(Storage):
     def put(self, credentials):
@@ -13,6 +14,7 @@ class DBCredentialStorage(Storage):
         credential = GoogleCredential()
         for field in GoogleCredential.__table__.columns:
             field_name = field.name
+
             if not hasattr(credentials, field_name):
                 continue
 
@@ -42,8 +44,7 @@ class DBCredentialStorage(Storage):
             token_uri=settings.token_uri,
             user_agent=None
         )
-        session.add(GoogleCredential())
-        session.commit()
+
         if oauth_credentials.access_token_expired:
             # Precheck access token for ability to save new credentials
             try:
@@ -62,24 +63,3 @@ class DBCredentialStorage(Storage):
         return oauth_credentials
 
 
-def some():
-    storage = DBCredentialStorage()
-    credentials = storage.get()
-
-    http = httplib2.Http()
-    http = credentials.authorize(http)
-
-    # Build a service object for interacting with the API. Visit
-    # the Google APIs Console
-    # to get a developerKey for your own application.
-    service = build(serviceName='gan', version='v1beta1', http=http,
-        developerKey='YOUR_API_KEY')
-
-    advertisers = service.advertisers()
-    params = {'role':'publishers', 'roleId':'PUBLISHER_ID'}
-
-    # Retrieve the relevant relationships.
-    list = advertisers.list(**params).execute()
-
-    for advertiser in list['items']:
-        print advertiser['name'] + ", " + advertiser['id']
