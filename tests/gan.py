@@ -4,30 +4,11 @@ import datetime
 import simplejson as json
 
 from mock import patch, Mock
-from sqlalchemy import create_engine
 
 from harvester.models.gan import GoogleCredential
-from harvester.models.meta import initialize_sql, DBSession
 
 from harvester.gan import DBCredentialStorage
-
-class BaseTestCase(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.engine = create_engine('sqlite://', echo=False)
-        cls.connection = cls.engine.connect()
-        initialize_sql(cls.connection)
-
-    def setUp(self):
-        # begin a non-ORM transaction
-        self.trans = self.connection.begin()
-
-        # bind an individual Session to the connection
-        self.session = DBSession()
-
-    def tearDown(self):
-        self.trans.rollback()
-        self.session.close()
+from tests.helpers import BaseTestCase
 
 class GANTest(BaseTestCase):
     def setUp(self):

@@ -2,13 +2,24 @@ import datetime
 import urllib
 from lxml import etree
 
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
+from harvester.models.meta import DBSession
 
-from models import LinkShareCategory, LinkShareDeal, LinkShareMerchant, LinkShareNetwork, LinkSharePromotionType
+from models.linkshare import LinkShareCategory, LinkShareDeal, LinkShareMerchant, LinkShareNetwork, LinkSharePromotionType
 
-DB_URL = "mysql://root@fsugmzhe13/ecommerce"
 API_URL = "http://couponfeed.linksynergy.com/coupon"
+
+class InternalError(Exception):
+    pass
+
+class AccessDenied(Exception):
+    pass
+
+class QuotaExceeded(Exception):
+    pass
+
+class InvalidRequest(Exception):
+    pass
+
 
 def get_deals_and_merchants(token, results_per_page =100, **kwargs):
     page_number = 1
@@ -26,12 +37,21 @@ def get_deals_and_merchants(token, results_per_page =100, **kwargs):
         if response_elements['page_number_requested'] == response_elements['total_pages']:
             last_page = True
 
+        url = response_elements['deal']['click_tracking_url']
+        redirect_url = urllib.urlopen(url).geturl()
+        response_elements['merchant']['domain'] = redirect_url.split('?')[0]
+
         save(response_elements)
         page_number += 1
 
 
 def parse_response(response):
     root = etree.fromstring(response.replace('&','&amp;'))
+
+    if root.tag == 'fault':
+        code = root.find('errorcode').text
+        message = root.find('errorstring').text
+        handle_error(code, message)
 
     total_matches = root.find('TotalMatches').text
     total_pages = root.find('TotalPages')
@@ -80,20 +100,23 @@ def parse_response(response):
     return response_elements
 
 def save(response_elements):
-
-    engine = create_engine(DB_URL, echo=True)
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    session = DBSession()
 
     network = LinkShareNetwork(**response_elements['network'])
+    if session.query(LinkShareNetwork).filter_by(id=response_elements['network']['id']) == []:
+        session.add(network)
 
-    merchant = LinkShareMerchant(network=network, **response_elements['merchant'])
+    merchant = LinkShareMerchant(network_id=network.id, **response_elements['merchant'])
     session.add(merchant)
 
-    deal = LinkShareDeal(network=network, merchant=merchant, **response_elements['deal'])
-    deal.categories=[LinkShareCategory(**category) for category in response_elements['categories']],
-    deal.promotion_types=[LinkSharePromotionType(**promotion_type) for promotion_type in response_elements['promotion_types']],
+    deal = LinkShareDeal(network_id=network.id, merchant_id=merchant.id, **response_elements['deal'])
+    deal.categories=[LinkShareCategory(**category) for category in response_elements['categories']]
+    deal.promotion_types=[LinkSharePromotionType(**promotion_type) for promotion_type in response_elements['promotion_types']]
 
     session.add(deal)
     session.commit()
 
+def handle_error(code, message):
+    errors = {'10': InternalError, '20': AccessDenied, '30': QuotaExceeded, '40': InvalidRequest}
+
+    raise errors.get(code, Exception)(message)

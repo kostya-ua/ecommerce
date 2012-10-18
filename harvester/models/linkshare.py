@@ -1,12 +1,16 @@
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Table
 
-Base = declarative_base()
+from harvester.models.meta import Base
 
 deal_category = Table('deal_category', Base.metadata,
-    Column('deal_id', Integer, ForeignKey('deal.id')),
-    Column('category_id', Integer, ForeignKey('category.id'))
+    Column('deal_id', Integer, ForeignKey('link_share_deal.id')),
+    Column('category_id', Integer, ForeignKey('link_share_category.id'))
+)
+
+deal_promotion_type = Table('deal_promotion_type', Base.metadata,
+    Column('deal_id', Integer, ForeignKey('link_share_deal.id')),
+    Column('promotion_type_id', Integer, ForeignKey('link_share_promotion_type.id'))
 )
 
 class LinkShareDeal(Base):
@@ -18,7 +22,7 @@ class LinkShareDeal(Base):
     network_id = Column(Integer, ForeignKey('link_share_network.id'))
 
     categories = relationship("LinkShareCategory", secondary=deal_category, backref="deals")
-    promotion_types = relationship("LinkSharePromotionType", secondary=deal_category, backref="deals")
+    promotion_types = relationship("LinkSharePromotionType", secondary=deal_promotion_type, backref="deals")
 
     description  = Column(String(1024))
     start_date = Column(DateTime)
@@ -39,7 +43,6 @@ class LinkShareMerchant(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(255))
-    url = Column(String(255))
     external_id = Column(Integer)
     status = Column(Integer)
     network_id = Column(Integer, ForeignKey('link_share_network.id'))

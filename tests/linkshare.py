@@ -1,9 +1,13 @@
-import datetime
 import unittest
-from linkshare.linkshare import parse_response, save
+import datetime
+from harvester.linkshare import parse_response, save
+from harvester.models.linkshare import LinkShareDeal, LinkShareNetwork
+from helpers import BaseTestCase
 
-class TestLinkshare(unittest.TestCase):
+
+class TestLinkshare(BaseTestCase):
     def setUp(self):
+        super(TestLinkshare, self).setUp()
         self.response = """<?xml version="1.0" encoding="UTF-8"?>
         <couponfeed>
            <TotalMatches>1</TotalMatches>
@@ -64,5 +68,19 @@ class TestLinkshare(unittest.TestCase):
 
     def test_save(self):
         save(self.response_elements)
+        deal = self.session.query(LinkShareDeal).all()[0]
 
 
+        self.assertEqual(deal.description, self.response_elements['deal']['description'])
+        self.assertEqual(deal.start_date, self.response_elements['deal']['start_date'])
+        self.assertEqual(deal.end_date, self.response_elements['deal']['end_date'])
+        self.assertEqual(deal.coupon_code, self.response_elements['deal']['coupon_code'])
+        self.assertEqual(deal.coupon_restriction, self.response_elements['deal']['coupon_restriction'])
+        self.assertEqual(deal.click_tracking_url, self.response_elements['deal']['click_tracking_url'])
+        self.assertEqual(deal.impression_pixel, self.response_elements['deal']['impression_pixel'])
+
+
+
+
+if __name__ == '__main__':
+    unittest.main()
